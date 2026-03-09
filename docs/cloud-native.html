@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云原生 | 智算基础设施</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        .article { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { padding: 6rem 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .article-header h1 { font-size: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .article-header .icon { font-size: 2.5rem; }
+        .article-meta { color: var(--text-muted); font-size: 0.9rem; }
+        .article-content { color: var(--text-secondary); }
+        .article-content h2 { color: var(--text-primary); font-size: 1.25rem; margin: 2.5rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .article-content p { margin-bottom: 1rem; line-height: 1.8; }
+        .article-content ul { margin: 0 0 1rem 1.5rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .back-link:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-icon">⚡</span>
+                <span>INFRA</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#about">关于</a></li>
+                <li><a href="/#experience">履历</a></li>
+                <li><a href="/#skills">技能</a></li>
+                <li><a href="/#contact">联系</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="article">
+        <a href="/#skills" class="back-link">← 返回技能列表</a>
+        
+        <header class="article-header">
+            <h1><span class="icon">☁️</span> 云原生</h1>
+            <div class="article-meta">
+                <span>技术栈</span> · <span>Kubernetes</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+            <h2>概述</h2>
+            <p>Kubernetes 已成为智算集群的标准平台。本文介绍 Kubernetes 深度定制、Operator 开发、CRD 和自动化运维的实践经验。</p>
+
+            <h2>Operator 开发</h2>
+            <p>Operator 是 Kubernetes 的扩展机制，用于封装运维知识：</p>
+            <ul>
+                <li>使用 Operator SDK 快速开发</li>
+                <li>通过 CRD 定义自定义资源</li>
+                <li>Reconcile 循环实现期望状态</li>
+            </ul>
+
+            <h2>Helm 包管理</h2>
+            <p>Helm 是 Kubernetes 的包管理器：</p>
+            <pre><code># 添加 Chart 仓库
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# 安装 Chart
+helm install my-release bitnami/nginx
+
+# 创建自定义 Chart
+helm create my-chart</code></pre>
+
+            <h2>Istio 服务网格</h2>
+            <p>Istio 提供微服务治理能力：</p>
+            <ul>
+                <li>mTLS 双向认证</li>
+                <li>流量管理（路由、熔断）</li>
+                <li>可观测性（遥测、追踪）</li>
+            </ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Built with ⚡ & 🚀</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分布式训练 | 智算基础设施</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        .article { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { padding: 6rem 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .article-header h1 { font-size: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .article-header .icon { font-size: 2.5rem; }
+        .article-meta { color: var(--text-muted); font-size: 0.9rem; }
+        .article-content { color: var(--text-secondary); }
+        .article-content h2 { color: var(--text-primary); font-size: 1.25rem; margin: 2.5rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .article-content p { margin-bottom: 1rem; line-height: 1.8; }
+        .article-content ul, .article-content ol { margin: 0 0 1rem 1.5rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content code { background: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; color: var(--accent); }
+        .article-content pre { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1rem; border: 1px solid var(--border); }
+        .article-content pre code { background: none; padding: 0; color: var(--text-primary); }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .back-link:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-icon">⚡</span>
+                <span>INFRA</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#about">关于</a></li>
+                <li><a href="/#experience">履历</a></li>
+                <li><a href="/#skills">技能</a></li>
+                <li><a href="/#contact">联系</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="article">
+        <a href="/#skills" class="back-link">← 返回技能列表</a>
+        
+        <header class="article-header">
+            <h1><span class="icon">🔀</span> 分布式训练</h1>
+            <div class="article-meta">
+                <span>技术栈</span> · <span>PyTorch</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+            <h2>概述</h2>
+            <p>分布式训练是大规模 AI 模型训练的基础。本文介绍 PyTorch 分布式训练的关键技术，包括 DDP、DeepSpeed、梯度压缩和混合精度训练。</p>
+
+            <h2>PyTorch DDP</h2>
+            <p>DistributedDataParallel (DDP) 是 PyTorch 推荐的分布式训练方式：</p>
+            <pre><code>import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+model = DDP(model, device_ids=[local_rank])</code></pre>
+            <p>启动分布式训练：</p>
+            <pre><code>python -m torch.distributed.launch \
+    --nproc_per_node=8 \
+    --nnodes=1 \
+    train.py</code></pre>
+
+            <h2>NCCL 通信优化</h2>
+            <p>NCCL 是 NVIDIA 的集体通信库，优化通信效率：</p>
+            <pre><code># NCCL 调试
+export NCCL_DEBUG=INFO
+export NCCL_IB_DISABLE=0
+export NCCL_NET_GDR_LEVEL=2</code></pre>
+
+            <h2>DeepSpeed 与 ZeRO</h2>
+            <p>DeepSpeed 提供 ZeRO 优化，大幅降低显存占用：</p>
+            <pre><code>{
+  "train_batch_size": 32,
+  "gradient_accumulation_steps": 4,
+  "steps_per_print": 10,
+  "zero_optimization": {
+    "stage": 3,
+    "offload_param": {"device": "cpu"},
+    "offload_optimizer": {"device": "cpu"}
+  },
+  "fp16": {"enabled": true}
+}</code></pre>
+
+            <h2>混合精度训练</h2>
+            <p>使用 FP16/BF16 减少显存并提升性能：</p>
+            <pre><code>from torch.cuda.amp import autocast, GradScaler
+
+scaler = GradScaler()
+with autocast():
+    output = model(input)
+loss = criterion(output, target)
+scaler.scale(loss).backward()
+scaler.step(optimizer)
+scaler.update()</code></pre>
+        </article>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Built with ⚡ & 🚀</p>
+        </div>
+    </footer>
+</body>
+</html>

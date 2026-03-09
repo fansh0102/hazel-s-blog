@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高性能网络 | 智算基础设施</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        .article { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { padding: 6rem 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .article-header h1 { font-size: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .article-header .icon { font-size: 2.5rem; }
+        .article-meta { color: var(--text-muted); font-size: 0.9rem; }
+        .article-content { color: var(--text-secondary); }
+        .article-content h2 { color: var(--text-primary); font-size: 1.25rem; margin: 2.5rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .article-content p { margin-bottom: 1rem; line-height: 1.8; }
+        .article-content ul { margin: 0 0 1rem 1.5rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content code { background: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; color: var(--accent); }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .back-link:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-icon">⚡</span>
+                <span>INFRA</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#about">关于</a></li>
+                <li><a href="/#experience">履历</a></li>
+                <li><a href="/#skills">技能</a></li>
+                <li><a href="/#contact">联系</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="article">
+        <a href="/#skills" class="back-link">← 返回技能列表</a>
+        
+        <header class="article-header">
+            <h1><span class="icon">🔌</span> 高性能网络</h1>
+            <div class="article-meta">
+                <span>技术栈</span> · <span>RDMA</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+            <h2>概述</h2>
+            <p>高性能网络是智算集群的关键基础设施。本文介绍 InfiniBand/RoCE 配置和 GPUDirect RDMA 技术。</p>
+
+            <h2>InfiniBand vs RoCE</h2>
+            <ul>
+                <li><strong>InfiniBand (IB)：</strong>专用高速网络，延迟低但成本高</li>
+                <li><strong>RoCE (RDMA over Converged Ethernet)：</strong>以太网承载 RDMA，兼容现有网络</li>
+            </ul>
+
+            <h2>GPUDirect RDMA</h2>
+            <p>GPUDirect RDMA 允许 GPU 直接跨节点通信，绕过 CPU：</p>
+            <ul>
+                <li>减少数据传输延迟</li>
+                <li>降低 CPU 利用率</li>
+                <li>提升分布式训练效率 30%+</li>
+            </ul>
+
+            <h2>MLNX_OFED 配置</h2>
+            <pre><code># 安装 MLNX_OFED
+./mlnx_ofed_install.py --upstream-libs
+
+# 验证 RDMA
+ibstat
+rdma dev</code></pre>
+
+            <h2>网络拥塞控制</h2>
+            <p>大规模集群网络拥塞控制配置：</p>
+            <ul>
+                <li>调整 DCB 优先级</li>
+                <li>配置 PFC (Priority Flow Control)</li>
+                <li>优化 MTU 到 9000</li>
+            </ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Built with ⚡ & 🚀</p>
+        </div>
+    </footer>
+</body>
+</html>

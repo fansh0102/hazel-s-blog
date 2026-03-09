@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU 调度 | 智算基础设施</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        .article { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { padding: 6rem 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .article-header h1 { font-size: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .article-header .icon { font-size: 2.5rem; }
+        .article-meta { color: var(--text-muted); font-size: 0.9rem; }
+        .article-content { color: var(--text-secondary); }
+        .article-content h2 { color: var(--text-primary); font-size: 1.25rem; margin: 2.5rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .article-content p { margin-bottom: 1rem; line-height: 1.8; }
+        .article-content ul, .article-content ol { margin: 0 0 1rem 1.5rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content code { background: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; color: var(--accent); }
+        .article-content pre { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; overflow-x: auto; margin-bottom: 1rem; border: 1px solid var(--border); }
+        .article-content pre code { background: none; padding: 0; color: var(--text-primary); }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .back-link:hover { color: var(--accent); }
+        .toc { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+        .toc h3 { color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem; }
+        .toc ul { list-style: none; margin: 0; }
+        .toc li { margin-bottom: 0.5rem; }
+        .toc a { color: var(--text-secondary); font-size: 0.9rem; }
+        .toc a:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-icon">⚡</span>
+                <span>INFRA</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#about">关于</a></li>
+                <li><a href="/#experience">履历</a></li>
+                <li><a href="/#skills">技能</a></li>
+                <li><a href="/#contact">联系</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="article">
+        <a href="/#skills" class="back-link">← 返回技能列表</a>
+        
+        <header class="article-header">
+            <h1><span class="icon">🎯</span> GPU 调度</h1>
+            <div class="article-meta">
+                <span>技术栈</span> · <span>Kubernetes</span>
+            </div>
+        </header>
+
+        <div class="toc">
+            <h3>目录</h3>
+            <ul>
+                <li><a href="#overview">概述</a></li>
+                <li><a href="#device-plugin">NVIDIA Device Plugin</a></li>
+                <li><a href="#topology">拓扑感知调度</a></li>
+                <li><a href="#sharing">GPU 共享策略</a></li>
+                <li><a href="#multi-tenant">多租户隔离</a></li>
+            </ul>
+        </div>
+
+        <article class="article-content">
+            <h2 id="overview">概述</h2>
+            <p>在 Kubernetes 集群中实现高效的 GPU 调度是智算平台的核心能力。本页介绍我们在 GPU 调度方面的实践经验，包括设备插件配置、拓扑感知、GPU 共享和多租户隔离等技术。</p>
+
+            <h2 id="device-plugin">NVIDIA Device Plugin</h2>
+            <p>Kubernetes 通过 NVIDIA Device Plugin 来发现和管理 GPU 资源。部署方式如下：</p>
+            <pre><code># 部署 Device Plugin
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/master/deployments/static/static.yaml
+
+# 验证部署
+kubectl get pods -n kube-system | grep nvidia-device-plugin</code></pre>
+            <p>Pod 中申请 GPU 资源：</p>
+            <pre><code>resources:
+  limits:
+    nvidia.com/gpu: 1</code></pre>
+
+            <h2 id="topology">拓扑感知调度</h2>
+            <p>对于分布式训练场景，GPU 之间的拓扑关系（NVLink、PCIe）严重影响通信效率。Kubernetes Topology Manager 可以帮助优化 Pod 调度。</p>
+            <pre><code># 开启 Topology Manager
+kubelet --topology-manager-policy=best-effort
+
+# 在 Pod 中配置拓扑策略
+topologyManagerPolicy: best-effort
+topologyManagerScope: container</code></pre>
+
+            <h2 id="sharing">GPU 共享策略</h2>
+            <p>对于小 workload，可以采用 GPU 共享策略提高资源利用率：</p>
+            <ul>
+                <li><strong>Time Slicing：</strong>将 GPU 时间片分给多个任务</li>
+                <li><strong>MIG（Multi-Instance GPU）：</strong>A100/H100 硬件级切分</li>
+            </ul>
+            <pre><code># 配置 Time Slicing
+config.yaml:
+  version: v1
+  sharing:
+    timeSlicing:
+      resources:
+        - name: nvidia.com/gpu
+          replicas: 4</code></pre>
+
+            <h2 id="multi-tenant">多租户隔离</h2>
+            <p>在共享集群中，需要做好租户间的资源隔离：</p>
+            <ul>
+                <li>使用 ResourceQuota 限制每个 namespace 的 GPU 配额</li>
+                <li>配置 LimitRange 设定默认 GPU 申请</li>
+                <li>结合 PriorityClass 实现抢占式调度</li>
+            </ul>
+            <pre><code>apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gpu-quota
+spec:
+  hard:
+    requests.nvidia.com/gpu: 10</code></pre>
+        </article>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Built with ⚡ & 🚀</p>
+        </div>
+    </footer>
+</body>
+</html>

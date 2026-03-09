@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>监控运维 | 智算基础设施</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        .article { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .article-header { padding: 6rem 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .article-header h1 { font-size: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .article-header .icon { font-size: 2.5rem; }
+        .article-meta { color: var(--text-muted); font-size: 0.9rem; }
+        .article-content { color: var(--text-secondary); }
+        .article-content h2 { color: var(--text-primary); font-size: 1.25rem; margin: 2.5rem 0 1rem; border-left: 3px solid var(--accent); padding-left: 1rem; }
+        .article-content p { margin-bottom: 1rem; line-height: 1.8; }
+        .article-content ul { margin: 0 0 1rem 1.5rem; }
+        .article-content li { margin-bottom: 0.5rem; }
+        .article-content code { background: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; color: var(--accent); }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .back-link:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <span class="logo-icon">⚡</span>
+                <span>INFRA</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="/#about">关于</a></li>
+                <li><a href="/#experience">履历</a></li>
+                <li><a href="/#skills">技能</a></li>
+                <li><a href="/#contact">联系</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="article">
+        <a href="/#skills" class="back-link">← 返回技能列表</a>
+        
+        <header class="article-header">
+            <h1><span class="icon">📊</span> 监控运维</h1>
+            <div class="article-meta">
+                <span>技术栈</span> · <span>Prometheus</span>
+            </div>
+        </header>
+
+        <article class="article-content">
+            <h2>概述</h2>
+            <p>智算集群监控是保障稳定运行的关键。本文介绍基于 Prometheus + Grafana + DCGM 的监控体系建设。</p>
+
+            <h2>DCGM 集成</h2>
+            <p>DCGM (Data Center GPU Manager) 是 NVIDIA 的 GPU 监控工具：</p>
+            <ul>
+                <li>GPU 利用率、显存、温度、功耗</li>
+                <li>NVLink 带宽监控</li>
+                <li>ECC 错误统计</li>
+            </ul>
+
+            <h2>Prometheus 指标采集</h2>
+            <p>配置 Prometheus 采集 GPU 指标：</p>
+            <pre><code>scrape_configs:
+  - job_name: 'gpu-metrics'
+    static_configs:
+      - targets: ['localhost:9400']</code></pre>
+
+            <h2>Grafana 可视化</h2>
+            <p>推荐 GPU 监控面板：</p>
+            <ul>
+                <li>GPU Utiliztion - 利用率</li>
+                <li>GPU Memory Used - 显存</li>
+                <li>GPU Temperature - 温度</li>
+                <li>GPU Power Draw - 功耗</li>
+            </ul>
+
+            <h2>告警规则</h2>
+            <p>关键告警配置：</p>
+            <ul>
+                <li>GPU 利用率持续 &lt; 20%（资源浪费）</li>
+                <li>显存使用 &gt; 90%（OOM 风险）</li>
+                <li>GPU 温度 &gt; 85°C（过热）</li>
+                <li>GPU 不可用（节点故障）</li>
+            </ul>
+        </article>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Built with ⚡ & 🚀</p>
+        </div>
+    </footer>
+</body>
+</html>
