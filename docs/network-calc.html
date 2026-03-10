@@ -177,8 +177,8 @@
         const nicBandwidth = parseInt(document.getElementById('nicType').value);
         const switchPorts = parseInt(document.getElementById('switchPorts').value);
         
-        // Rail Optimized: 每 2 GPU 共享 1 网卡 = 1 Rail
-        const railsPerServer = Math.ceil(gpuPerServer / 2);
+        // 每张网卡对应 1 个 Rail（每 GPU 1 张网卡）
+        const railsPerServer = gpuPerServer;
         const totalRails = serverCount * railsPerServer;
         
         // Leaf 交换机数量
