@@ -82,9 +82,9 @@
                 <div class="form-group">
                     <label>网卡类型</label>
                     <select id="nicType">
-                        <option value="100">100Gbps (HDR)</option>
-                        <option value="200" selected>200Gbps (NDR)</option>
-                        <option value="400">400Gbps</option>
+                        <option value="100">100Gbps</option>
+                        <option value="200">200Gbps (HDR)</option>
+                        <option value="400" selected>400Gbps (NDR)</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -198,10 +198,9 @@
         // 总带宽
         const totalBandwidth = (serverCount * gpuPerServer * nicBandwidth / 2) / 1000;
         
-        // 超售比
-        const downBandwidth = leafSwitches * usablePortsPerLeaf * nicBandwidth;
-        const upBandwidth = leafSwitches * spineSwitches * 2 * nicBandwidth;
-        const oversubscription = (upBandwidth / downBandwidth).toFixed(1);
+        // 非阻塞网络 (1:1 收敛比)
+        // Leaf 上联到 Spine 的带宽 = Leaf 下联到服务器的带宽
+        const oversubscription = '1:1';
         
         // 显示结果
         document.getElementById('result').style.display = 'block';
@@ -210,7 +209,7 @@
         document.getElementById('nics').textContent = totalRails;
         document.getElementById('cables').textContent = totalCables;
         document.getElementById('totalBandwidth').textContent = totalBandwidth.toFixed(1);
-        document.getElementById('oversubscription').textContent = oversubscription + ':1';
+        document.getElementById('oversubscription').textContent = oversubscription;
         
         // 绘制拓扑图
         drawTopology(serverCount, leafSwitches, spineSwitches, railsPerServer);
