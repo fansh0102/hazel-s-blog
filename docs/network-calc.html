@@ -200,11 +200,15 @@
         const leafSwitches = Math.ceil(totalRails / serverPortsPerLeaf);
         
         // Spine 交换机数量
-        // 每台 Leaf 有 spinePortsPerLeaf 个上行端口连接 Spine
-        const totalUplinks = leafSwitches * spinePortsPerLeaf;
-        // 每台 Spine 假设有 64 个下行端口
-        const spinePorts = 64;
-        const spineSwitches = Math.max(4, Math.ceil(totalUplinks / spinePorts));
+        // 只有当 Leaf > 1 时才需要 Spine
+        let spineSwitches;
+        if (leafSwitches <= 1) {
+            spineSwitches = 0;  // 小规模不需要 Spine
+        } else {
+            const totalUplinks = leafSwitches * spinePortsPerLeaf;
+            const spinePorts = 64;
+            spineSwitches = Math.max(4, Math.ceil(totalUplinks / spinePorts));
+        }
         
         // 线缆数量
         const serverToLeafCables = totalRails;
