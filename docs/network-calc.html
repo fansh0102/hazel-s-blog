@@ -124,7 +124,7 @@
                 </div>
                 <div class="result-item">
                     <span class="num" id="oversubscription">-</span>
-                    <span class="label">超售比</span>
+                    <span class="label">收敛比</span>
                 </div>
             </div>
         </div>
@@ -135,11 +135,11 @@
         </div>
 
         <div class="note">
-            <strong>💡 说明：</strong>本计算器基于 <strong>Rail Optimized</strong> 架构（Fat-Tree 变种）。<br><br>
-            • <strong>Rail（轨道）：</strong>每 2 个 GPU 共享 1 张网卡，形成 1 个独立网络轨道<br>
-            • <strong>Leaf 交换机：</strong>每个 Rail 独立连接到 1 台 Leaf 交换机，最大化 NVLink 通信效率<br>
-            • <strong>Spine 交换机：</strong>双上联冗余，连接所有 Leaf 交换机<br>
-            • <strong>优势：</strong>同一 Rail 内服务器通信只需 1 跳，跨 Rail 通信 2 跳
+            <strong>💡 说明：</strong>基于 <strong>Rail Optimized</strong> 网络架构计算。<br><br>
+            • <strong>计算逻辑：</strong>每 GPU 配置 1 张独立网卡，每张网卡为 1 个独立 Rail<br>
+            • <strong>Leaf 交换机：</strong>每个 Rail 连接到 1 台 Leaf，每台 Leaf 32 口连接服务器 + 32 口连接 Spine<br>
+            • <strong>Spine 交换机：</strong>连接所有 Leaf 交换机，提供全带宽转发<br>
+            • <strong>收敛比 1:1：</strong>下联带宽 = 上联带宽，非阻塞网络
         </div>
     </main>
 
@@ -235,119 +235,101 @@
         const container = document.getElementById('topology');
         container.innerHTML = '';
         
-        const width = container.offsetWidth || 750;
-        const height = 420;
+        const width = container.offsetWidth || 900;
+        const height = 500;
         
-        const maxServers = 24;
+        // 最多显示 64 台服务器
+        const maxServers = 64;
         const displayServers = Math.min(serverCount, maxServers);
         
-        // Rail Optimized 架构
-        // 每个 Rail 的服务器通过同一网卡连接到同一个 Leaf
-        const serversPerRail = 8; // 每个 rail 8 台服务器
-        const numRails = Math.ceil(displayServers / serversPerRail);
+        const serverWidth = 50;
+        const serverHeight = 32;
+        const serverGap = 4;
+        const serversPerGroup = 32;  // 每组 32 台
         
-        const serverWidth = 60;
-        const serverHeight = 38;
-        const serverGapX = 8;
-        const serverGapY = 8;
+        // 分层布局
+        const spineY = 35;
+        const leafY = 160;
+        const serverY = 280;
         
-        // 绘制层级
-        const spineY = 40;
-        const leafY = 140;
-        const serverY = 260;
+        // 交换机
+        const spineX = width / 2;
+        const spineGapY = 55;
         
-        // Spine 交换机（核心层）
-        const spineX = 580;
-        const spineGap = 90;
-        const displaySpines = Math.min(spineSwitches, 4);
+        const leafXStart = 80;
+        const leafGapX = 90;
+        const displayLeafs = Math.min(leafSwitches, 8);
         
-        // Leaf 交换机（接入层）- 每个 Rail 一个 Leaf
-        const leafX = 320;
-        const leafGap = 55;
-        const displayLeafs = Math.min(leafSwitches, numRails);
+        // 服务器分组
+        const groups = [];
+        const serverGroupWidth = 480;
+        const serverGroupHeight = 180;
         
-        // 服务器位置
-        const servers = [];
-        const railStartX = 40;
+        // SVG 连线层
+        let svg = '<svg width="' + width + '" height="' + height + '" style="position:absolute;top:0;left:0;z-index:1;">';
         
-        for (let i = 0; i < displayServers; i++) {
-            const railIdx = Math.floor(i / serversPerRail);
-            const serverInRail = i % serversPerRail;
-            servers.push({
-                x: railStartX + railIdx * (serverWidth + 15) + 10,
-                y: serverY + serverInRail * (serverHeight + serverGapY),
-                rail: railIdx
-            });
-        }
-        
-        // 绘制 SVG 连线
-        let svg = '<svg width="' + width + '" height="' + height + '" style="position:absolute;top:0;left:0;">';
-        
-        // 服务器到 Leaf（同一 Rail 的服务器通过同一网卡连接到同一个 Leaf）
-        const leafs = [];
-        for (let r = 0; r < numRails; r++) {
-            const lx = leafX + r * 5;
-            const ly = leafY + r * leafGap;
-            leafs.push({ x: lx, y: ly });
-            
-            // 该 Rail 的所有服务器连线到这个 Leaf
-            servers.filter(s => s.rail === r).forEach(s => {
-                svg += `<line x1="${s.x + serverWidth/2}" y1="${s.y}" x2="${lx + 40}" y2="${ly + 18}" 
-                    stroke="var(--accent)" stroke-width="1.5" opacity="0.6" />`;
-            });
-        }
-        
-        // Leaf 到 Spine（双上联，冗余）
-        leafs.forEach(l => {
-            for (let s = 0; s < displaySpines; s++) {
-                const sx = spineX + s * 10;
-                const sy = spineY + s * spineGap;
-                svg += `<line x1="${l.x + 80}" y1="${l.y + 18}" x2="${sx}" y2="${sy + 20}" 
-                    stroke="var(--accent-secondary)" stroke-width="2" opacity="0.7" />`;
+        // 绘制 Spine 到 Leaf 连线
+        for (let li = 0; li < displayLeafs; li++) {
+            const lx = leafXStart + li * leafGapX + 35;
+            for (let si = 0; si < Math.min(spineSwitches, 4); si++) {
+                const sx = spineX - 60 + si * 40;
+                svg += `<line x1="${sx + 30}" y1="${spineY + si * spineGapY + 20}" x2="${lx}" y2="${leafY + 15}" 
+                    stroke="var(--accent-secondary)" stroke-width="1.5" opacity="0.5" />`;
             }
-        });
+        }
         
         svg += '</svg>';
         
         let html = svg;
         
-        // 绘制 Spine 交换机（核心层）
-        for (let i = 0; i < displaySpines; i++) {
-            const sx = spineX + i * 10;
-            const sy = spineY + i * spineGap;
-            html += `<div class="node core" style="left:${sx}px;top:${sy}px;border-color:var(--accent-secondary);">
-                <span class="icon">🟣</span>
-                <span>Spine ${i+1}</span>
-                <span style="font-size:0.65rem;color:var(--text-muted);">核心层</span>
+        // === Spine 层（顶部）===
+        html += `<div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);color:var(--accent-secondary);font-size:0.8rem;font-weight:600;z-index:2;">🟣 核心层 Spine</div>`;
+        for (let i = 0; i < Math.min(spineSwitches, 4); i++) {
+            const sx = spineX - 60 + i * 40;
+            html += `<div class="node core" style="left:${sx}px;top:${spineY + i * spineGapY}px;z-index:2;">
+                <span class="icon">🔶</span>
+                <span style="font-size:0.6rem;">Spine ${i+1}</span>
             </div>`;
         }
         
-        // 绘制 Leaf 交换机（接入层）
-        for (let r = 0; r < Math.min(numRails, displayLeafs); r++) {
-            const lx = leafX + r * 5;
-            const ly = leafY + r * leafGap;
-            html += `<div class="node switch" style="left:${lx}px;top:${ly}px;border-color:var(--accent);">
+        // === Leaf 层（中部）===
+        html += `<div style="position:absolute;top:135px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:0.8rem;font-weight:600;z-index:2;">🔷 接入层 Leaf</div>`;
+        for (let i = 0; i < displayLeafs; i++) {
+            const lx = leafXStart + i * leafGapX;
+            html += `<div class="node switch" style="left:${lx}px;top:${leafY}px;z-index:2;">
                 <span class="icon">🔷</span>
-                <span>Leaf ${r+1}</span>
-                <span style="font-size:0.65rem;color:var(--text-muted);">Rail ${r+1}</span>
+                <span style="font-size:0.6rem;">Leaf ${i+1}</span>
             </div>`;
+            
+            // 绘制该 Leaf 连接的服务器（32台一组）
+            const serversInThisLeaf = Math.min(32, displayServers - i * 32);
+            if (serversInThisLeaf > 0) {
+                // 绘制分组框
+                const groupX = leafXStart + i * leafGapX - 10;
+                const groupY = serverY - 10;
+                html += `<div style="position:absolute;left:${groupX}px;top:${groupY}px;width:${serverGroupWidth}px;height:${serverGroupHeight}px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);z-index:1;opacity:0.5;"></div>`;
+                html += `<div style="position:absolute;left:${groupX + 10}px;top:${groupY - 5}px;font-size:0.65rem;color:var(--text-muted);background:var(--bg-secondary);padding:0 5px;z-index:2;">POD ${i+1} (${serversInThisLeaf}台)</div>`;
+                
+                // 绘制服务器 - 每行 8 台
+                for (let s = 0; s < serversInThisLeaf; s++) {
+                    const row = Math.floor(s / 8);
+                    const col = s % 8;
+                    const sx = leafXStart + i * leafGapX + 10 + col * (serverWidth + 8);
+                    const sy = serverY + 20 + row * (serverHeight + 8);
+                    
+                    html += `<div class="node server" style="left:${sx}px;top:${sy}px;width:${serverWidth}px;height:${serverHeight}px;z-index:2;">
+                        <span style="font-size:0.7rem;">S${i * 32 + s + 1}</span>
+                    </div>`;
+                    
+                    // 绘制到 Leaf 的连线
+                    html += `<svg style="position:absolute;top:0;left:0;width:${width}px;height:${height}px;z-index:1;pointer-events:none;"><line x1="${sx + serverWidth/2}" y1="${sy}" x2="${leafXStart + i * leafGapX + 35}" y2="${leafY + 30}" stroke="var(--accent)" stroke-width="1" opacity="0.4" /></svg>`;
+                }
+            }
         }
         
-        // 绘制服务器
-        servers.forEach((s, i) => {
-            html += `<div class="node server" style="left:${s.x}px;top:${s.y}px;width:${serverWidth}px;height:${serverHeight}px;">
-                <span class="icon" style="font-size:1rem;">🖥️</span>
-                <span style="font-size:0.65rem;">S${i+1}</span>
-            </div>`;
-        });
-        
-        // 层级标签
-        html += `<div style="position:absolute;top:${spineY-15}px;left:50%;transform:translateX(-50%);color:var(--accent-secondary);font-size:0.75rem;font-weight:600;">核心层 (Spine)</div>`;
-        html += `<div style="position:absolute;top:${leafY-15}px;left:50%;transform:translateX(-50%);color:var(--accent);font-size:0.75rem;font-weight:600;">接入层 (Leaf)</div>`;
-        html += `<div style="position:absolute;top:${serverY-15}px;left:50%;transform:translateX(-50%);color:var(--text-muted);font-size:0.75rem;font-weight:600;">服务器层 (Compute)</div>`;
-        
+        // 隐藏多余的服务器提示
         if (serverCount > maxServers) {
-            html += `<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--text-muted);font-size:0.75rem;">
+            html += `<div style="position:absolute;bottom:15px;left:50%;transform:translateX(-50%);color:var(--text-muted);font-size:0.75rem;z-index:2;">
                 ... 还有 ${serverCount - maxServers} 台服务器
             </div>`;
         }
