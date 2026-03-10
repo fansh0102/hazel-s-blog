@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络拓扑计算器 | 智算基础设施</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <style>
+        .calculator { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .calculator-header { padding: 6rem 0 2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+        .calculator-header h1 { font-size: 2rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .calc-form { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem 1rem; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 1rem; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+        .calc-btn { width: 100%; padding: 1rem; background: linear-gradient(135deg, var(--accent), var(--accent-secondary)); border: none; border-radius: 8px; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .calc-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--glow); }
+        
+        .result { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; }
+        .result h3 { font-size: 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+        .result-item { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; text-align: center; }
+        .result-item .num { font-size: 2rem; font-weight: 700; color: var(--accent); display: block; margin-bottom: 0.25rem; }
+        .result-item .label { font-size: 0.8rem; color: var(--text-muted); }
+        
+        .topology-container { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem; overflow-x: auto; }
+        .topology-container h3 { font-size: 1.25rem; margin-bottom: 1.5rem; }
+        .topology { min-width: 600px; height: 400px; position: relative; }
+        
+        .node { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-tertiary); border: 2px solid var(--border); border-radius: 8px; font-size: 0.75rem; color: var(--text-secondary); transition: all 0.3s; }
+        .node:hover { border-color: var(--accent); transform: scale(1.05); }
+        .node.server { width: 80px; height: 50px; }
+        .node.switch { width: 90px; height: 45px; }
+        .node.core { width: 100px; height: 50px; }
+        .node .icon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        
+        .link { position: absolute; height: 2px; background: var(--border); transform-origin: left center; }
+        
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .back-link:hover { color: var(--accent); }
+        
+        .note { background: var(--accent-dim); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../" class="logo">
+                <span class="logo-icon">⚡</span>
+                <span>INFRA</span>
+            </a>
+            <ul class="nav-links">
+                <li><a href="../">🏠 返回主页</a></li>
+                <li><button id="theme-toggle" class="theme-btn" title="切换主题">🌙</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="calculator">
+        <a href="../#skills" class="back-link">← 返回技能列表</a>
+        
+        <header class="calculator-header">
+            <h1><span class="icon">🔌</span> 网络拓扑计算器</h1>
+            <p style="color: var(--text-secondary);">根据 GPU 服务器数量计算网络设备用量</p>
+        </header>
+
+        <div class="calc-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>GPU 服务器数量</label>
+                    <input type="number" id="serverCount" value="8" min="1" max="1000">
+                </div>
+                <div class="form-group">
+                    <label>每服务器 GPU 数量</label>
+                    <input type="number" id="gpuPerServer" value="8" min="1" max="16">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>网卡类型</label>
+                    <select id="nicType">
+                        <option value="100">100Gbps (HDR)</option>
+                        <option value="200" selected>200Gbps (NDR)</option>
+                        <option value="400">400Gbps</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Leaf 交换机端口数</label>
+                    <select id="switchPorts">
+                        <option value="32">32 端口</option>
+                        <option value="64" selected>64 端口</option>
+                        <option value="128">128 端口</option>
+                    </select>
+                </div>
+            </div>
+            <button class="calc-btn" onclick="calculate()">计算网络拓扑</button>
+        </div>
+
+        <div class="result" id="result" style="display: none;">
+            <h3>📊 计算结果</h3>
+            <div class="result-grid">
+                <div class="result-item">
+                    <span class="num" id="leafSwitches">-</span>
+                    <span class="label">Leaf 交换机</span>
+                </div>
+                <div class="result-item">
+                    <span class="num" id="spineSwitches">-</span>
+                    <span class="label">Spine 交换机</span>
+                </div>
+                <div class="result-item">
+                    <span class="num" id="nics">-</span>
+                    <span class="label">网卡数量</span>
+                </div>
+                <div class="result-item">
+                    <span class="num" id="cables">-</span>
+                    <span class="label">线缆数量</span>
+                </div>
+                <div class="result-item">
+                    <span class="num" id="totalBandwidth">-</span>
+                    <span class="label">总带宽 (Tbps)</span>
+                </div>
+                <div class="result-item">
+                    <span class="num" id="oversubscription">-</span>
+                    <span class="label">超售比</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="topology-container" id="topologyContainer" style="display: none;">
+            <h3>🗺️ 网络拓扑图</h3>
+            <div class="topology" id="topology"></div>
+        </div>
+
+        <div class="note">
+            <strong>💡 说明：</strong>本计算器基于经典的 Fat-Tree (CLOS) 网络架构。<br>
+            • Leaf 交换机：连接服务器，每台服务器至少 1 条上行链路<br>
+            • Spine 交换机：连接 Leaf 交换机，提供南北向流量<br>
+            • 超售比 1.5:1 表示上行带宽是下行带宽的 1.5 倍
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Built with ⚡ & 🚀</p>
+        </div>
+    </footer>
+
+    <script>
+    // 主题切换
+    const toggle = document.getElementById('theme-toggle');
+    const root = document.documentElement;
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        root.setAttribute('data-theme', 'light');
+        toggle.textContent = '☀️';
+    }
+    toggle.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme');
+        if (current === 'light') {
+            root.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+            toggle.textContent = '🌙';
+        } else {
+            root.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            toggle.textContent = '☀️';
+        }
+    });
+
+    function calculate() {
+        const serverCount = parseInt(document.getElementById('serverCount').value);
+        const gpuPerServer = parseInt(document.getElementById('gpuPerServer').value);
+        const nicBandwidth = parseInt(document.getElementById('nicType').value);
+        const switchPorts = parseInt(document.getElementById('switchPorts').value);
+        
+        // 每服务器需要的网卡数 (假设每2个GPU共用1张网卡)
+        const nicsPerServer = Math.ceil(gpuPerServer / 2);
+        const totalNics = serverCount * nicsPerServer;
+        
+        // Leaf 交换机数量 (每台服务器连接到不同的 Leaf)
+        const leafSwitches = Math.ceil(totalNics / (switchPorts - 4)); // 保留4个端口用于上行
+        
+        // Spine 交换机数量 (通常为 Leaf 数量的 1/2 到 1/4)
+        const spineSwitches = Math.max(2, Math.ceil(leafSwitches / 4));
+        
+        // 线缆数量 (服务器到Leaf + Leaf到Spine)
+        const serverToLeafCables = totalNics;
+        const leafToSpineCables = leafSwitches * spineSwitches * 2; // 双上联
+        const totalCables = serverToLeafCables + leafToSpineCables;
+        
+        // 总带宽
+        const totalBandwidth = (serverCount * nicsPerServer * nicBandwidth) / 1000;
+        
+        // 超售比 (Spine到Leaf带宽 / Leaf下联带宽)
+        const downBandwidth = leafSwitches * (switchPorts - 4) * nicBandwidth;
+        const upBandwidth = leafSwitches * spineSwitches * 2 * nicBandwidth;
+        const oversubscription = (upBandwidth / downBandwidth).toFixed(1);
+        
+        // 显示结果
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('leafSwitches').textContent = leafSwitches;
+        document.getElementById('spineSwitches').textContent = spineSwitches;
+        document.getElementById('nics').textContent = totalNics;
+        document.getElementById('cables').textContent = totalCables;
+        document.getElementById('totalBandwidth').textContent = totalBandwidth.toFixed(1);
+        document.getElementById('oversubscription').textContent = oversubscription + ':1';
+        
+        // 绘制拓扑图
+        drawTopology(serverCount, leafSwitches, spineSwitches, nicsPerServer);
+        document.getElementById('topologyContainer').style.display = 'block';
+    }
+    
+    function drawTopology(serverCount, leafSwitches, spineSwitches, nicsPerServer) {
+        const container = document.getElementById('topology');
+        container.innerHTML = '';
+        
+        const width = container.offsetWidth || 700;
+        const height = 400;
+        
+        // 限制显示的服务器数量
+        const maxServers = 16;
+        const displayServers = Math.min(serverCount, maxServers);
+        
+        // 计算位置
+        const serverWidth = 70;
+        const serverHeight = 45;
+        const serverGap = 10;
+        
+        const serversPerRow = Math.min(displayServers, 8);
+        const serverRows = Math.ceil(displayServers / serversPerRow);
+        
+        // 服务器位置
+        const servers = [];
+        const startX = 50;
+        const serverY = height - 80;
+        
+        for (let i = 0; i < displayServers; i++) {
+            const row = Math.floor(i / serversPerRow);
+            const col = i % serversPerRow;
+            servers.push({
+                x: startX + col * (serverWidth + serverGap),
+                y: serverY - row * (serverHeight + 15)
+            });
+        }
+        
+        // Leaf 交换机位置
+        const leafX = 280;
+        const leafGap = 60;
+        const leafs = [];
+        for (let i = 0; i < Math.min(leafSwitches, 6); i++) {
+            leafs.push({
+                x: leafX,
+                y: 60 + i * leafGap
+            });
+        }
+        
+        // Spine 交换机位置
+        const spineX = 500;
+        const spineGap = 80;
+        const spines = [];
+        for (let i = 0; i < Math.min(spineSwitches, 4); i++) {
+            spines.push({
+                x: spineX,
+                y: 80 + i * spineGap
+            });
+        }
+        
+        // 绘制连接线
+        let svg = '<svg width="' + width + '" height="' + height + '" style="position:absolute;top:0;left:0;">';
+        
+        // 服务器到 Leaf 连线
+        servers.forEach((s, i) => {
+            const leafIdx = Math.floor(i * leafs.length / displayServers);
+            const l = leafs[leafIdx];
+            if (l) {
+                svg += `<line x1="${s.x + serverWidth/2}" y1="${s.y}" x2="${l.x + 45}" y2="${l.y + 22}" stroke="var(--border)" stroke-width="1.5" />`;
+            }
+        });
+        
+        // Leaf 到 Spine 连线
+        leafs.forEach(l => {
+            spines.forEach(s => {
+                svg += `<line x1="${l.x + 90}" y1="${l.y + 22}" x2="${s.x}" y2="${s.y + 25}" stroke="var(--accent)" stroke-width="2" opacity="0.5" />`;
+            });
+        });
+        
+        svg += '</svg>';
+        
+        // 绘制节点
+        let html = svg;
+        
+        // 绘制 Spine 交换机
+        spines.forEach((s, i) => {
+            html += `<div class="node core" style="left:${s.x}px;top:${s.y}px;">
+                <span class="icon">🔶</span>
+                <span>Spine ${i+1}</span>
+            </div>`;
+        });
+        
+        // 绘制 Leaf 交换机
+        leafs.forEach((l, i) => {
+            html += `<div class="node switch" style="left:${l.x}px;top:${l.y}px;">
+                <span class="icon">🔷</span>
+                <span>Leaf ${i+1}</span>
+            </div>`;
+        });
+        
+        // 绘制服务器
+        servers.forEach((s, i) => {
+            html += `<div class="node server" style="left:${s.x}px;top:${s.y}px;">
+                <span class="icon">🖥️</span>
+                <span>Server ${i+1}</span>
+            </div>`;
+        });
+        
+        // 如果服务器数量超过显示限制，添加提示
+        if (serverCount > maxServers) {
+            html += `<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--text-muted);font-size:0.8rem;">
+                ... 还有 ${serverCount - maxServers} 台服务器
+            </div>`;
+        }
+        
+        container.innerHTML = html;
+    }
+    </script>
+</body>
+</html>
