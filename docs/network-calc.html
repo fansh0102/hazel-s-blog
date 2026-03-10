@@ -177,14 +177,13 @@
         const nicBandwidth = parseInt(document.getElementById('nicType').value);
         const switchPorts = parseInt(document.getElementById('switchPorts').value);
         
-        // 每张网卡对应 1 个 Rail（每 GPU 1 张网卡）
+        // 8 卡服务器 = 8 个独立 Rail，每个 Rail 1 张网卡
         const railsPerServer = gpuPerServer;
         const totalRails = serverCount * railsPerServer;
         
-        // Leaf 交换机数量
+        // Leaf 交换机
         // 64 端口: 32 连服务器, 32 连 Spine
         // 32 端口: 16 连服务器, 16 连 Spine
-        // 其他: 保留 4 个端口用于上行
         let serverPortsPerLeaf, spinePortsPerLeaf;
         if (switchPorts === 64) {
             serverPortsPerLeaf = 32;
@@ -197,28 +196,24 @@
             spinePortsPerLeaf = 4;
         }
         
+        // 多少个 Rail（服务器网卡）就需要多少个下行端口
         const leafSwitches = Math.ceil(totalRails / serverPortsPerLeaf);
         
-        // Spine 交换机数量
-        // 只有当 Leaf > 1 时才需要 Spine
-        let spineSwitches;
-        if (leafSwitches <= 1) {
-            spineSwitches = 0;  // 小规模不需要 Spine
-        } else {
-            const totalUplinks = leafSwitches * spinePortsPerLeaf;
-            const spinePorts = 64;
-            spineSwitches = Math.max(4, Math.ceil(totalUplinks / spinePorts));
-        }
+        // Spine 交换机
+        // 收敛比 1:1，下行带宽 = 上行带宽
+        // Leaf 的上行端口数 = leafSwitches * spinePortsPerLeaf
+        const totalUplinks = leafSwitches * spinePortsPerLeaf;
+        const spinePorts = 64;
+        const spineSwitches = Math.max(2, Math.ceil(totalUplinks / spinePorts));
         
         // 线缆数量
         const serverToLeafCables = totalRails;
-        const leafToSpineCables = leafSwitches * spinePortsPerLeaf;
+        const leafToSpineCables = totalUplinks;
         const totalCables = serverToLeafCables + leafToSpineCables;
         
         // 总带宽
-        const totalBandwidth = (serverCount * gpuPerServer * nicBandwidth / 2) / 1000;
+        const totalBandwidth = (serverCount * gpuPerServer * nicBandwidth) / 1000;
         
-        // 非阻塞网络 1:1
         const oversubscription = '1:1';
         
         // 显示结果
