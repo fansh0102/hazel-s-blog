@@ -177,29 +177,44 @@
         const nicBandwidth = parseInt(document.getElementById('nicType').value);
         const switchPorts = parseInt(document.getElementById('switchPorts').value);
         
-        // Rail Optimized 架构: 每台服务器的每个 GPU/Rail 独立网卡
-        // 通常 2 个 GPU 共享 1 张网卡 (对应 1 个 Rail)
+        // Rail Optimized: 每 2 GPU 共享 1 网卡 = 1 Rail
         const railsPerServer = Math.ceil(gpuPerServer / 2);
         const totalRails = serverCount * railsPerServer;
         
-        // Leaf 交换机: 每个 Rail 连接到独立的 Leaf
-        // 保留端口用于上行链接到 Spine
-        const usablePortsPerLeaf = switchPorts - 4;
-        const leafSwitches = Math.ceil(totalRails / usablePortsPerLeaf);
+        // Leaf 交换机数量
+        // 64 端口: 32 连服务器, 32 连 Spine
+        // 32 端口: 16 连服务器, 16 连 Spine
+        // 其他: 保留 4 个端口用于上行
+        let serverPortsPerLeaf, spinePortsPerLeaf;
+        if (switchPorts === 64) {
+            serverPortsPerLeaf = 32;
+            spinePortsPerLeaf = 32;
+        } else if (switchPorts === 32) {
+            serverPortsPerLeaf = 16;
+            spinePortsPerLeaf = 16;
+        } else {
+            serverPortsPerLeaf = switchPorts - 4;
+            spinePortsPerLeaf = 4;
+        }
         
-        // Spine 交换机: 双上联冗余，通常 4 个
-        const spineSwitches = Math.max(4, Math.ceil(leafSwitches / 4));
+        const leafSwitches = Math.ceil(totalRails / serverPortsPerLeaf);
+        
+        // Spine 交换机数量
+        // 每台 Leaf 有 spinePortsPerLeaf 个上行端口连接 Spine
+        const totalUplinks = leafSwitches * spinePortsPerLeaf;
+        // 每台 Spine 假设有 64 个下行端口
+        const spinePorts = 64;
+        const spineSwitches = Math.max(4, Math.ceil(totalUplinks / spinePorts));
         
         // 线缆数量
-        const serverToLeafCables = totalRails;  // 每个 Rail 1 条
-        const leafToSpineCables = leafSwitches * spineSwitches * 2; // 双上联
+        const serverToLeafCables = totalRails;
+        const leafToSpineCables = leafSwitches * spinePortsPerLeaf;
         const totalCables = serverToLeafCables + leafToSpineCables;
         
         // 总带宽
         const totalBandwidth = (serverCount * gpuPerServer * nicBandwidth / 2) / 1000;
         
-        // 非阻塞网络 (1:1 收敛比)
-        // Leaf 上联到 Spine 的带宽 = Leaf 下联到服务器的带宽
+        // 非阻塞网络 1:1
         const oversubscription = '1:1';
         
         // 显示结果
