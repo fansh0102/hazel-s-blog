@@ -16,6 +16,7 @@
                 <span>INFRA</span>
             </a>
             <ul class="nav-links">
+                <li><button id="theme-toggle" class="theme-btn" title="切换主题">🌙</button></li>
                 <li><a href="#about">关于</a></li>
                 <li><a href="#experience">履历</a></li>
                 <li><a href="#skills">技能</a></li>
@@ -194,5 +195,45 @@
             <p>&copy; 2026 Built with ⚡ & 🚀</p>
         </div>
     </footer>
+
+    <script>
+    // 主题切换
+    const toggle = document.getElementById('theme-toggle');
+    const root = document.documentElement;
+    
+    // 读取本地保存的主题
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+        root.setAttribute('data-theme', 'light');
+        toggle.textContent = '☀️';
+    }
+    
+    toggle.addEventListener('click', () => {
+        const current = root.getAttribute('data-theme');
+        if (current === 'light') {
+            root.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'dark');
+            toggle.textContent = '🌙';
+        } else {
+            root.setAttribute('data-theme', 'light');
+            localStorage.setItem('theme', 'light');
+            toggle.textContent = '☀️';
+        }
+    });
+    
+    // 入场动画
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    document.querySelectorAll('.section, .timeline-item, .skill-card, .stat, .contact-link').forEach(el => {
+        el.classList.add('fade-in');
+        observer.observe(el);
+    });
+    </script>
 </body>
 </html>

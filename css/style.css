@@ -16,6 +16,40 @@
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 }
 
+/* 亮色主题 */
+[data-theme="light"] {
+    --bg-primary: #f5f7fa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8ecf1;
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a6a;
+    --text-muted: #8888aa;
+    --accent: #0066ff;
+    --accent-secondary: #6644ff;
+    --accent-tertiary: #ff4477;
+    --accent-dim: rgba(0, 102, 255, 0.08);
+    --border: #dde1e8;
+    --glow: rgba(0, 102, 255, 0.3);
+}
+
+[data-theme="light"] body::before {
+    background-image: 
+        linear-gradient(rgba(0, 102, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 102, 255, 0.05) 1px, transparent 1px);
+}
+
+[data-theme="light"] .navbar {
+    background: rgba(245, 247, 250, 0.9);
+}
+
+[data-theme="light"] .hero::before {
+    background: var(--accent);
+}
+
+[data-theme="light"] .hero::after {
+    background: var(--accent-secondary);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -148,6 +182,22 @@ a:hover {
 
 .nav-links a:hover::after {
     width: 100%;
+}
+
+/* 主题切换按钮 */
+.theme-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.theme-btn:hover {
+    border-color: var(--accent);
+    transform: scale(1.1);
 }
 
 /* === Hero === */
@@ -562,4 +612,44 @@ footer a:hover {
         width: 300px;
         height: 300px;
     }
+}
+
+/* === 入场动画 === */
+.fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 延迟动画 */
+.timeline-item:nth-child(1) { transition-delay: 0.1s; }
+.timeline-item:nth-child(2) { transition-delay: 0.2s; }
+.timeline-item:nth-child(3) { transition-delay: 0.3s; }
+
+.skill-card:nth-child(1) { transition-delay: 0.1s; }
+.skill-card:nth-child(2) { transition-delay: 0.15s; }
+.skill-card:nth-child(3) { transition-delay: 0.2s; }
+.skill-card:nth-child(4) { transition-delay: 0.25s; }
+.skill-card:nth-child(5) { transition-delay: 0.3s; }
+.skill-card:nth-child(6) { transition-delay: 0.35s; }
+
+.stat:nth-child(1) { transition-delay: 0.1s; }
+.stat:nth-child(2) { transition-delay: 0.2s; }
+.stat:nth-child(3) { transition-delay: 0.3s; }
+
+/* 技能卡片悬停3D效果 */
+.skill-card {
+    transform-style: preserve-3d;
+    perspective: 1000px;
+}
+
+.skill-card:hover {
+    border-color: var(--accent-secondary);
+    transform: translateY(-8px) rotateX(2deg);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
 }
