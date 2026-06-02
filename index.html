@@ -19,7 +19,6 @@
                 <li><button id="theme-toggle" class="theme-btn" title="切换主题">🌙</button></li>
                 <li><a href="#about">关于</a></li>
                 <li><a href="#experience">履历</a></li>
-                <li><a href="#certifications">证书</a></li>
                 <li><a href="#skills">技能</a></li>
                 <li><a href="#contact">联系</a></li>
             </ul>
@@ -59,6 +58,10 @@
                         <p>GPU 集群网络系统工程师，专注于 InfiniBand / RoCE 高性能网络领域。</p>
                         <p>从 IDC 基础设施运维起步，逐步深入智算中心 GPU 集群网络建设，具备数据中心全生命周期经验——设备选型、上架部署、网络调试、性能测试到验收交付。</p>
                         <p>在这里记录技术实践、踩坑经验与行业思考，与同行交流学习。</p>
+                        <a href="assets/certificates/nvidia-certified-professional-ai-networking-2025.pdf" target="_blank" class="about-cert-link">
+                            <span>NVIDIA Certified Professional: AI Networking</span>
+                            <strong>查看证书 PDF</strong>
+                        </a>
                     </div>
                     <div class="about-stats">
                         <div class="stat">
@@ -97,25 +100,6 @@
                         <div class="time">2023.10 - 2024.02</div>
                         <p>负责上海移动基站故障管理系统运维，处理用户报障与工单，编写维护文档与操作手册。与研发团队协作，支撑系统模块的功能测试、上线发布与日常变更管理，协助客户改进运维文档，提高服务质量。</p>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="certifications" class="section">
-            <div class="container">
-                <h2 class="section-title">证书认证</h2>
-                <div class="cert-grid">
-                    <article class="cert-card">
-                        <div class="cert-badge">
-                            <span>NVIDIA</span>
-                        </div>
-                        <div class="cert-content">
-                            <p class="cert-meta">Professional Certification · 2025</p>
-                            <h3>NVIDIA Certified Professional: AI Networking</h3>
-                            <p>面向 AI 数据中心网络的专业认证，覆盖 InfiniBand / RoCE、GPU 集群网络与高性能互联相关能力。</p>
-                            <a href="assets/certificates/nvidia-certified-professional-ai-networking-2025.pdf" target="_blank" class="cert-link">查看证书 PDF</a>
-                        </div>
-                    </article>
                 </div>
             </div>
         </section>
@@ -260,7 +244,7 @@
         });
     }, { threshold: 0.1 });
     
-    document.querySelectorAll('.section, .timeline-item, .skill-card, .stat, .cert-card, .contact-link').forEach(el => {
+    document.querySelectorAll('.section, .timeline-item, .skill-card, .stat, .about-cert-link, .contact-link').forEach(el => {
         el.classList.add('fade-in');
         observer.observe(el);
     });
