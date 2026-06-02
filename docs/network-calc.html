@@ -88,7 +88,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Leaf 交换机端口数</label>
+                    <label>交换机端口数</label>
                     <select id="switchPorts">
                         <option value="32">32 端口</option>
                         <option value="64" selected>64 端口</option>
@@ -104,7 +104,7 @@
             <div class="result-grid">
                 <div class="result-item">
                     <span class="num" id="leafSwitches">-</span>
-                    <span class="label">Leaf 交换机</span>
+                    <span class="label">Leaf/接入交换机</span>
                 </div>
                 <div class="result-item">
                     <span class="num" id="spineSwitches">-</span>
@@ -137,9 +137,9 @@
         <div class="note">
             <strong>💡 说明：</strong>基于 <strong>Rail Optimized</strong> 网络架构计算。<br><br>
             • <strong>计算逻辑：</strong>每 GPU 配置 1 张独立网卡，每张网卡为 1 个独立 Rail<br>
-            • <strong>Leaf 交换机：</strong>每个 Rail 连接到 1 台 Leaf，每台 Leaf 32 口连接服务器 + 32 口连接 Spine<br>
-            • <strong>Spine 交换机：</strong>连接所有 Leaf 交换机，提供全带宽转发<br>
-            • <strong>收敛比 1:1：</strong>下联带宽 = 上联带宽，非阻塞网络<br><br>
+            • <strong>小规模集群：</strong>当总网卡数不超过单台交换机端口数时，使用单层交换机即可无阻塞互联，例如 8 台 8 卡服务器可使用 1 台 64 口交换机<br>
+            • <strong>两层 Leaf-Spine：</strong>超过单台交换机容量后，Leaf 端口一半下联服务器网卡，一半上联 Spine<br>
+            • <strong>收敛比 1:1：</strong>单层交换或两层 Leaf-Spine 都按下联带宽 = 上联带宽的非阻塞网络计算<br><br>
             <strong>📦 NVIDIA InfiniBand 产品系列：</strong><br>
             • <strong>网卡：</strong>ConnectX (VPI 适配器，支持 InfiniBand/以太网)<br>
             • <strong>交换机：</strong>Quantum 系列 (Quantum-2/Quantum-X800)<br>
@@ -186,31 +186,32 @@
         // 总网卡数（Rail 数）
         const totalNics = serverCount * gpuPerServer;
         
-        // 交换机端口分配：64 端口 = 32 连服务器 + 32 连 Spine
-        // 32 端口 = 16 连服务器 + 16 连 Spine
-        let serverPortsPerLeaf, spinePortsPerLeaf;
-        if (switchPorts === 64) {
-            serverPortsPerLeaf = 32;
-            spinePortsPerLeaf = 32;
-        } else if (switchPorts === 32) {
-            serverPortsPerLeaf = 16;
-            spinePortsPerLeaf = 16;
+        let leafSwitches;
+        let spineSwitches;
+        let totalUplinks;
+        let totalCables;
+        let serverPortsPerLeaf;
+        let topologyMode;
+
+        if (totalNics <= switchPorts) {
+            // 单层交换：所有服务器网卡直接接入同一台交换机，无需 Spine。
+            leafSwitches = 1;
+            spineSwitches = 0;
+            totalUplinks = 0;
+            totalCables = totalNics;
+            serverPortsPerLeaf = switchPorts;
+            topologyMode = 'single';
         } else {
+            // 两层 Leaf-Spine 1:1 非阻塞架构：Leaf 端口一半下联服务器网卡，一半上联 Spine。
             serverPortsPerLeaf = Math.floor(switchPorts / 2);
-            spinePortsPerLeaf = Math.floor(switchPorts / 2);
+            const spinePortsPerLeaf = switchPorts - serverPortsPerLeaf;
+
+            leafSwitches = Math.ceil(totalNics / serverPortsPerLeaf);
+            totalUplinks = leafSwitches * spinePortsPerLeaf;
+            spineSwitches = Math.ceil(totalUplinks / switchPorts);
+            totalCables = totalNics + totalUplinks;
+            topologyMode = 'leaf-spine';
         }
-        
-        // Leaf 交换机数量 = 总网卡数 / 每台 Leaf 的下行端口数
-        const leafSwitches = Math.ceil(totalNics / serverPortsPerLeaf);
-        
-        // Spine 交换机数量 = Leaf 上行总端口数 / Spine 端口数
-        const totalUplinks = leafSwitches * spinePortsPerLeaf;
-        const spineSwitches = Math.ceil(totalUplinks / switchPorts);
-        
-        // 线缆数量
-        const serverToLeafCables = totalNics;
-        const leafToSpineCables = totalUplinks;
-        const totalCables = serverToLeafCables + leafToSpineCables;
         
         // 总带宽
         const totalBandwidth = (totalNics * nicBandwidth) / 1000;
@@ -227,73 +228,126 @@
         document.getElementById('oversubscription').textContent = oversubscription;
         
         // 绘制拓扑图
-        drawTopology(serverCount, leafSwitches, spineSwitches, gpuPerServer);
+        drawTopology(serverCount, leafSwitches, spineSwitches, gpuPerServer, serverPortsPerLeaf, topologyMode);
         document.getElementById('topologyContainer').style.display = 'block';
     }
     
-    function drawTopology(serverCount, leafSwitches, spineSwitches, nicsPerServer) {
+    function drawTopology(serverCount, leafSwitches, spineSwitches, nicsPerServer, serverPortsPerLeaf, topologyMode) {
         const container = document.getElementById('topology');
         container.innerHTML = '';
         
-        const width = container.offsetWidth || 950;
-        const height = 380;
-        
-        const maxServers = 64;
-        const displayServers = Math.min(serverCount, maxServers);
-        
-        // 横向布局: 服务器(左) -> Leaf(中) -> Spine(右)
-        const serverX = 30;
-        const leafX = 420;
-        const spineX = 750;
-        
-        const serverY = 50;
-        const leafY = 60;
-        const spineY = 40;
+        const displayServers = makeDisplayIndexes(serverCount, 6);
+        const displayLeafs = makeDisplayIndexes(leafSwitches, topologyMode === 'single' ? 1 : 6);
+        const displaySpines = makeDisplayIndexes(spineSwitches, 6);
         
         const serverWidth = 45;
         const serverHeight = 28;
-        const serverGapX = 4;
-        const serverGapY = 4;
-        const serversPerGroup = 8;
+        const serverGapX = 8;
+        const serverGapY = 10;
+        const leafWidth = 62;
+        const leafHeight = 36;
+        const leafGapX = 18;
         
-        const leafWidth = 55;
-        const leafHeight = 35;
-        const leafGapY = 45;
-        
-        const spineWidth = 60;
+        const spineWidth = 72;
         const spineHeight = 40;
-        const spineGapY = 60;
+        const spineGapX = 22;
+
+        const spineY = 52;
+        const leafY = topologyMode === 'leaf-spine' ? 200 : 150;
+        const serverY = 330;
+        const serverColumns = displayServers.length;
+        const serverRows = 1;
+        const serverLayerWidth = serverColumns * serverWidth + Math.max(0, serverColumns - 1) * serverGapX;
+        const leafLayerWidth = displayLeafs.length * leafWidth + Math.max(0, displayLeafs.length - 1) * leafGapX;
+        const spineLayerWidth = displaySpines.length * spineWidth + Math.max(0, displaySpines.length - 1) * spineGapX;
+        const width = Math.max(container.offsetWidth || 900, 760, serverLayerWidth + 80, leafLayerWidth + 80, spineLayerWidth + 80);
+        const height = Math.max(500, serverY + serverRows * (serverHeight + serverGapY) + 60);
+        container.style.width = width + 'px';
+        container.style.height = height + 'px';
+
+        function makeDisplayIndexes(total, maxVisible) {
+            if (total <= maxVisible) {
+                return Array.from({ length: total }, (_, index) => index);
+            }
+            const headCount = Math.ceil((maxVisible - 1) / 2);
+            const tailCount = Math.floor((maxVisible - 1) / 2);
+            const head = Array.from({ length: headCount }, (_, index) => index);
+            const tail = Array.from({ length: tailCount }, (_, index) => total - tailCount + index);
+            return [...head, 'ellipsis', ...tail];
+        }
+
+        function centeredX(count, itemWidth, gap) {
+            const totalWidth = count * itemWidth + Math.max(0, count - 1) * gap;
+            return Math.max(20, (width - totalWidth) / 2);
+        }
+
+        function leafPosition(displayIndex) {
+            const startX = centeredX(displayLeafs.length, leafWidth, leafGapX);
+            return {
+                x: startX + displayIndex * (leafWidth + leafGapX),
+                y: leafY
+            };
+        }
+
+        function spinePosition(displayIndex) {
+            const startX = centeredX(displaySpines.length, spineWidth, spineGapX);
+            return {
+                x: startX + displayIndex * (spineWidth + spineGapX),
+                y: spineY
+            };
+        }
+
+        function serverPosition(displayIndex) {
+            const startX = centeredX(serverColumns, serverWidth, serverGapX);
+            return {
+                x: startX + displayIndex * (serverWidth + serverGapX),
+                y: serverY
+            };
+        }
+
+        function nearestDisplayPosition(index, displayIndexes, positionFn) {
+            const exact = displayIndexes.indexOf(index);
+            if (exact !== -1) {
+                return positionFn(exact);
+            }
+            const numericIndexes = displayIndexes
+                .map((value, displayIndex) => ({ value, displayIndex }))
+                .filter(item => typeof item.value === 'number');
+            const nearest = numericIndexes.reduce((best, item) => {
+                return Math.abs(item.value - index) < Math.abs(best.value - index) ? item : best;
+            }, numericIndexes[0]);
+            return positionFn(nearest.displayIndex);
+        }
         
         // SVG 连线层
         let svg = '<svg width="' + width + '" height="' + height + '" style="position:absolute;top:0;left:0;z-index:1;">';
         
         // 服务器到 Leaf 连线
-        const serversPerLeaf = 32;
-        for (let i = 0; i < displayServers; i++) {
-            const groupIdx = Math.floor(i / serversPerGroup);
-            const serverInGroup = i % serversPerGroup;
-            const leafIdx = Math.floor(i / serversPerLeaf);
+        for (let displayIndex = 0; displayIndex < displayServers.length; displayIndex++) {
+            const serverIndex = displayServers[displayIndex];
+            if (serverIndex === 'ellipsis') continue;
+            const leafIdx = Math.floor((serverIndex * nicsPerServer) / serverPortsPerLeaf);
+            const leaf = nearestDisplayPosition(Math.min(leafIdx, leafSwitches - 1), displayLeafs, leafPosition);
+            const server = serverPosition(displayIndex);
             
-            const sx = serverX + groupIdx * (serversPerGroup * (serverWidth + serverGapX) + 15) + 10 + serverInGroup * (serverWidth + serverGapX);
-            const sy = serverY + 20 + Math.floor(serverInGroup / 4) * (serverHeight + serverGapY + 15) + (serverInGroup % 4) * (serverHeight + serverGapY);
-            
-            const lx = leafX + (leafIdx % 4) * 15;
-            const ly = leafY + leafIdx * leafGapY + 17;
-            
-            svg += `<line x1="${sx + serverWidth}" y1="${sy + serverHeight/2}" x2="${lx}" y2="${ly}" 
+            svg += `<line x1="${server.x + serverWidth / 2}" y1="${server.y}" x2="${leaf.x + leafWidth / 2}" y2="${leaf.y + leafHeight}" 
                 stroke="var(--accent)" stroke-width="1" opacity="0.5" />`;
         }
         
-        // Leaf 到 Spine 连线
-        for (let li = 0; li < Math.min(leafSwitches, 8); li++) {
-            const lx = leafX + (li % 4) * 15 + leafWidth;
-            const ly = leafY + li * leafGapY + leafHeight/2;
-            
-            for (let si = 0; si < Math.min(spineSwitches, 4); si++) {
-                const sx = spineX + si * 10;
-                const sy = spineY + si * spineGapY + spineHeight/2;
-                svg += `<line x1="${lx}" y1="${ly}" x2="${sx}" y2="${sy}" 
-                    stroke="var(--accent-secondary)" stroke-width="1.5" opacity="0.6" />`;
+        if (topologyMode === 'leaf-spine') {
+            // Leaf 到 Spine 连线
+            for (let leafDisplayIndex = 0; leafDisplayIndex < displayLeafs.length; leafDisplayIndex++) {
+                const leafIndex = displayLeafs[leafDisplayIndex];
+                if (leafIndex === 'ellipsis') continue;
+                const leaf = leafPosition(leafDisplayIndex);
+                
+                for (let spineDisplayIndex = 0; spineDisplayIndex < displaySpines.length; spineDisplayIndex++) {
+                    const spineIndex = displaySpines[spineDisplayIndex];
+                    if (spineIndex === 'ellipsis') continue;
+                    const spine = spinePosition(spineDisplayIndex);
+                    svg += `<line x1="${leaf.x + leafWidth / 2}" y1="${leaf.y}" x2="${spine.x + spineWidth / 2}" y2="${spine.y + spineHeight}" 
+                        stroke="var(--accent-secondary)" stroke-width="1.5" opacity="0.6" />`;
+                }
             }
         }
         
@@ -302,59 +356,58 @@
         let html = svg;
         
         // === 层标签 ===
-        html += `<div style="position:absolute;left:${serverX}px;top:15px;color:var(--text-muted);font-size:0.7rem;font-weight:600;z-index:2;">🖥️ 服务器</div>`;
-        html += `<div style="position:absolute;left:${leafX - 20}px;top:25px;color:var(--accent);font-size:0.7rem;font-weight:600;z-index:2;">🔷 Leaf</div>`;
-        html += `<div style="position:absolute;left:${spineX - 10}px;top:10px;color:var(--accent-secondary);font-size:0.7rem;font-weight:600;z-index:2;">🟣 Spine</div>`;
+        html += `<div style="position:absolute;left:50%;top:${serverY - 28}px;transform:translateX(-50%);color:var(--text-muted);font-size:0.7rem;font-weight:600;z-index:2;">🖥️ 服务器</div>`;
+        html += `<div style="position:absolute;left:50%;top:${leafY - 30}px;transform:translateX(-50%);color:var(--accent);font-size:0.7rem;font-weight:600;z-index:2;">🔷 ${topologyMode === 'single' ? 'Switch' : 'Leaf'}</div>`;
+        if (topologyMode === 'leaf-spine') {
+            html += `<div style="position:absolute;left:50%;top:${spineY - 30}px;transform:translateX(-50%);color:var(--accent-secondary);font-size:0.7rem;font-weight:600;z-index:2;">🟣 Spine</div>`;
+        }
         
-        // === 绘制服务器（左侧）===
-        const groups = Math.ceil(displayServers / serversPerGroup);
-        for (let g = 0; g < groups; g++) {
-            const groupStartX = serverX + g * (serversPerGroup * (serverWidth + serverGapX) + 15);
-            const serversInGroup = Math.min(serversPerGroup, displayServers - g * serversPerGroup);
-            
-            // 分组框
-            html += `<div style="position:absolute;left:${groupStartX}px;top:${serverY}px;width:${serversPerGroup * (serverWidth + serverGapX) - serverGapX + 10}px;height:${130}px;border:1px dashed var(--border);border-radius:6px;background:var(--bg-tertiary);opacity:0.4;z-index:1;"></div>`;
-            
-            // 绘制组内服务器 - 每组8台，2行4列
-            for (let s = 0; s < serversInGroup; s++) {
-                const row = Math.floor(s / 4);
-                const col = s % 4;
-                const sx = groupStartX + 5 + col * (serverWidth + serverGapX);
-                const sy = serverY + 15 + row * (serverHeight + serverGapY + 10);
-                
-                html += `<div style="position:absolute;left:${sx}px;top:${sy}px;width:${serverWidth}px;height:${serverHeight}px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-secondary);z-index:2;">
-                    S${g * serversPerGroup + s + 1}
+        // === 绘制服务器（底部）===
+        for (let displayIndex = 0; displayIndex < displayServers.length; displayIndex++) {
+            const serverIndex = displayServers[displayIndex];
+            const server = serverPosition(displayIndex);
+            if (serverIndex === 'ellipsis') {
+                html += `<div style="position:absolute;left:${server.x}px;top:${server.y}px;width:${serverWidth}px;height:${serverHeight}px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--text-muted);z-index:2;">...</div>`;
+            } else {
+                html += `<div style="position:absolute;left:${server.x}px;top:${server.y}px;width:${serverWidth}px;height:${serverHeight}px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-secondary);z-index:2;">
+                    S${serverIndex + 1}
                 </div>`;
             }
         }
         
-        // === 绘制 Leaf 交换机（中间）===
-        const displayLeafs = Math.min(leafSwitches, 8);
-        for (let i = 0; i < displayLeafs; i++) {
-            const lx = leafX + (i % 4) * 15;
-            const ly = leafY + i * leafGapY;
-            html += `<div style="position:absolute;left:${lx}px;top:${ly}px;width:${leafWidth}px;height:${leafHeight}px;background:var(--bg-secondary);border:2px solid var(--accent);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.55rem;color:var(--accent);z-index:2;">
-                <span>🔷</span>
-                <span>L${i+1}</span>
-            </div>`;
+        // === 绘制接入/Leaf 交换机（中间）===
+        for (let displayIndex = 0; displayIndex < displayLeafs.length; displayIndex++) {
+            const leafIndex = displayLeafs[displayIndex];
+            const leaf = leafPosition(displayIndex);
+            if (leafIndex === 'ellipsis') {
+                html += `<div style="position:absolute;left:${leaf.x}px;top:${leaf.y}px;width:${leafWidth}px;height:${leafHeight}px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--text-muted);z-index:2;">...</div>`;
+            } else {
+                html += `<div style="position:absolute;left:${leaf.x}px;top:${leaf.y}px;width:${leafWidth}px;height:${leafHeight}px;background:var(--bg-secondary);border:2px solid var(--accent);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.55rem;color:var(--accent);z-index:2;">
+                    <span>🔷</span>
+                    <span>${topologyMode === 'single' ? 'SW' : 'L'}${leafIndex + 1}</span>
+                </div>`;
+            }
         }
         
-        // === 绘制 Spine 交换机（右侧）===
-        for (let i = 0; i < Math.min(spineSwitches, 4); i++) {
-            const sx = spineX + i * 10;
-            const sy = spineY + i * spineGapY;
-            html += `<div style="position:absolute;left:${sx}px;top:${sy}px;width:${spineWidth}px;height:${spineHeight}px;background:var(--bg-secondary);border:2px solid var(--accent-secondary);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.55rem;color:var(--accent-secondary);z-index:2;">
-                <span>🟣</span>
-                <span>Spine${i+1}</span>
-            </div>`;
+        if (topologyMode === 'leaf-spine') {
+            // === 绘制 Spine 交换机（右侧）===
+            for (let displayIndex = 0; displayIndex < displaySpines.length; displayIndex++) {
+                const spineIndex = displaySpines[displayIndex];
+                const spine = spinePosition(displayIndex);
+                if (spineIndex === 'ellipsis') {
+                    html += `<div style="position:absolute;left:${spine.x}px;top:${spine.y}px;width:${spineWidth}px;height:${spineHeight}px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--text-muted);z-index:2;">...</div>`;
+                } else {
+                    html += `<div style="position:absolute;left:${spine.x}px;top:${spine.y}px;width:${spineWidth}px;height:${spineHeight}px;background:var(--bg-secondary);border:2px solid var(--accent-secondary);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.55rem;color:var(--accent-secondary);z-index:2;">
+                        <span>🟣</span>
+                        <span>Spine${spineIndex + 1}</span>
+                    </div>`;
+                }
+            }
         }
         
-        // 提示
-        if (serverCount > maxServers) {
-            html += `<div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--text-muted);font-size:0.7rem;z-index:2;">
-                ... 还有 ${serverCount - maxServers} 台服务器
-            </div>`;
-        }
+        html += `<div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:var(--text-muted);font-size:0.75rem;z-index:2;text-align:center;">
+            图中为抽象拓扑：服务器 ${serverCount} 台，${topologyMode === 'single' ? '接入交换机' : 'Leaf'} ${leafSwitches} 台，Spine ${spineSwitches} 台
+        </div>`;
         
         container.innerHTML = html;
     }
