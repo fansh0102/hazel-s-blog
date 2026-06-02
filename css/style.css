@@ -480,6 +480,84 @@ a:hover {
     font-size: 0.9rem;
 }
 
+/* === Certifications === */
+.cert-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.cert-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: center;
+    transition: all 0.3s;
+}
+
+.cert-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 10px 40px rgba(0, 212, 255, 0.12);
+    transform: translateY(-4px);
+}
+
+.cert-badge {
+    min-height: 120px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #76b900, #1a1a3a);
+    border: 1px solid rgba(118, 185, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30px rgba(118, 185, 0, 0.18);
+}
+
+.cert-badge span {
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+}
+
+.cert-meta {
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.cert-content h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.cert-content p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.cert-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    background: var(--accent-dim);
+    border: 1px solid rgba(0, 212, 255, 0.28);
+    border-radius: 8px;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.cert-link:hover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.16);
+}
+
 /* === Skills === */
 .skills-grid {
     display: grid;
@@ -605,6 +683,14 @@ footer a:hover {
     .about-stats {
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 1rem;
+    }
+
+    .cert-card {
+        grid-template-columns: 1fr;
+    }
+
+    .cert-badge {
+        min-height: 92px;
     }
     
     .hero h1 {
