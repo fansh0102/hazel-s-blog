@@ -240,9 +240,9 @@
         const displayLeafs = makeDisplayIndexes(leafSwitches, topologyMode === 'single' ? 1 : 6);
         const displaySpines = makeDisplayIndexes(spineSwitches, 6);
         
-        const serverWidth = 45;
-        const serverHeight = 28;
-        const serverGapX = 8;
+        const serverWidth = 58;
+        const serverHeight = 42;
+        const serverGapX = 10;
         const serverGapY = 10;
         const leafWidth = 62;
         const leafHeight = 36;
@@ -369,8 +369,9 @@
             if (serverIndex === 'ellipsis') {
                 html += `<div style="position:absolute;left:${server.x}px;top:${server.y}px;width:${serverWidth}px;height:${serverHeight}px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--text-muted);z-index:2;">...</div>`;
             } else {
-                html += `<div style="position:absolute;left:${server.x}px;top:${server.y}px;width:${serverWidth}px;height:${serverHeight}px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-secondary);z-index:2;">
-                    S${serverIndex + 1}
+                html += `<div style="position:absolute;left:${server.x}px;top:${server.y}px;width:${serverWidth}px;height:${serverHeight}px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.12rem;font-size:0.55rem;color:var(--text-secondary);z-index:2;box-shadow:0 0 12px rgba(0,0,0,0.18);">
+                    <span style="font-size:0.95rem;line-height:1;">🖥️</span>
+                    <span>S${serverIndex + 1}</span>
                 </div>`;
             }
         }
@@ -383,8 +384,7 @@
                 html += `<div style="position:absolute;left:${leaf.x}px;top:${leaf.y}px;width:${leafWidth}px;height:${leafHeight}px;display:flex;align-items:center;justify-content:center;font-size:1rem;color:var(--text-muted);z-index:2;">...</div>`;
             } else {
                 html += `<div style="position:absolute;left:${leaf.x}px;top:${leaf.y}px;width:${leafWidth}px;height:${leafHeight}px;background:var(--bg-secondary);border:2px solid var(--accent);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.55rem;color:var(--accent);z-index:2;">
-                    <span>🔷</span>
-                    <span>${topologyMode === 'single' ? 'SW' : 'L'}${leafIndex + 1}</span>
+                    <span>${topologyMode === 'single' ? 'Switch' : 'Leaf'}${leafIndex + 1}</span>
                 </div>`;
             }
         }
